@@ -26,3 +26,4 @@ Route::post('restaurant/menu/delete', 'App\Http\Controllers\RestaurantController
 
 Route::get('/restaurant/items', 'App\Http\Controllers\RestaurantController@getAllItems');
 Route::post('/restaurant/items', 'App\Http\Controllers\RestaurantController@createItem');
+Route::post('/restaurant/items/delete', 'App\Http\Controllers\RestaurantController@createItem');

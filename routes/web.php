@@ -17,8 +17,9 @@ use Google\Cloud\Firestore\FirestoreClient;
 
 Route::get('/', function(){
         $db = new FirestoreClient(['projectId' => 'laravel-firestore-4b02e']);
-        $data = $db->collectionGroup('menu_items');
+        $data = $db->collectionGroup('menu_items')->where('status', '=', 'active')->documents();
         dd($data);
+        // dd($data);
         //create a document, use add instead of set to generate unique doc_id
         // $store = $db->collection('Restaurant');
         // $res = $store->add([
@@ -37,8 +38,6 @@ Route::get('/', function(){
         
         // $store = $db->collection('Restaurant')->where('items', '=', 'vegee')->documents();
         // dd($store);
-
-        dd($db->collectionGroup('menu_items')->where('name', '=', 'bara')); 
 
         //get all documents of collection
         // $datas = $db->collection('Users')->documents();

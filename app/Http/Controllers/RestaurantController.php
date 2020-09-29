@@ -9,16 +9,19 @@ use Google\Cloud\Firestore\FirestoreClient;
 class RestaurantController extends Controller
 {
     protected $db = null;
+    protected $subcollection = null;
 
     public function __construct() {
-        $this->db = new FirestoreClient(['projectId' => 'laravel-firestore-4b02e']);
-        $this->db = $this->db->collection('Restaurant');
+        $client = new FirestoreClient(['projectId' => 'laravel-firestore-4b02e']);
+
+        $this->db = $client->collection('Restaurant');
+        $this->subcollection = $client->collectionGroup('menu_items');
     }
 
     public function groupQuery()
     {
         $access = new FirestoreClient(['projectId' => 'laravel-firestore-4b02e']);
-        return $access->collectionGroup('menu_items');
+        return $access->collectionGroup('menu_items')->where('name', '=', 'Japnese')->documents();
     }
 
     //create menu
@@ -36,7 +39,7 @@ class RestaurantController extends Controller
         ]);
 
         return response()->json([
-            "menus" => $menu
+            "message" => "Menu created successfully."
         ]);
 
     }
@@ -48,8 +51,9 @@ class RestaurantController extends Controller
         $menu = [];
         
         foreach ($data as $key => $value) {
+            //value->id(), return documentId
             if(array_key_exists('name', $value->data())) {
-                $menu[$value->data()['name']] = $value->data();
+                $menu[$value->id()] = $value->data();
             }
         }
         
@@ -59,54 +63,55 @@ class RestaurantController extends Controller
     //edit menu
     public function editMenu(Request $request)
     {
-        $datas = $this->db->where('name', '=' ,$request->name)->documents();
-        
-        foreach ($datas as $key => $value) {
+        $data = $this->db->document($request->id);
+        $snapshot = $data->snapshot();
     
-            $name = $value->data()['name'];
-            if($name == $request->key) {
-                $updatedData = $this->db->document($name)->update([
-                    ['path' => 'name', 'value' => $request->name],
-                    ['path' => 'status', 'value' => $request->status]
-                ]);
+        $menuId = $snapshot->id();
+        //$snapshot->data(), to get the data
+        if($menuId == $request->id) {
+            $updatedData = $this->db->document($menuId)->update([
+                ['path' => 'name', 'value' => $request->name],
+                ['path' => 'status', 'value' => $request->status]
+            ]);
 
-                return response()->json([
-                    "message" => "updated successfully"
-                ]);
-            }
+            return response()->json([
+                "message" => "updated successfully"
+            ]);
         }
     }
 
     //delete menu
     public function deleteMenu(Request $request)
     {
-        $datas = $this->db->where('name', '=', $request->name)->documents();
+        $data = $this->db->document($request->id);
+        $snapshot = $data->snapshot();
 
-        foreach ($datas as $key => $value) {
-            $name = $value->data()['name'];
-            if($name == $request->name) {
-                $this->db->document($name)->delete();
-                return response()->json([
-                    "message" => "Deleted"
-                ], 200);
-            } else {
-                return response()->json([
-                    "message" => "Menu not found"
-                ], 404);
-            }
+        $menuId = $snapshot->id();
+        
+        if($menuId == $request->id) {
+            $this->db->document($menuId)->delete();
+
+            return response()->json([
+                "message" => "Deleted"
+            ], 200);
+        } else {
+            return response()->json([
+                "message" => "Menu not found"
+            ], 404);
         }
     }
 
     //get all menuItems
     public function getAllItems()
     {
-        $menu = $this->index();
+        $menus = $this->db->documents();
+
         $menuItems = [];
 
-        foreach ($menu as $key => $value) {
-            $items = $this->db->document($key)->collection('menu_items')->documents();
+        foreach ($menus as $key => $value) {
+            $items = $this->db->document($value->id())->collection('menu_items')->documents();
             foreach ($items as $item) {
-                $menuItems[$item->data()['name']] = $item->data();
+                $menuItems[$item->id()] = $item->data();
             }
         }
 
@@ -118,20 +123,26 @@ class RestaurantController extends Controller
     {
         $menu = $request->menu;
 
-        $createdItem = $this->db->document($menu)->collection('menu_items')->document($request->name)->set([
-            'name' => $request->name,
-            'status' => $request->status,
-            'price' => $request->price,
-        ]);
+        $documents = $this->db->where('name', '=', $menu)->documents();
 
-        return $createdItem;
+        foreach ($documents as $key => $value) {
+            $createdItem = $this->db->document($value->id())->collection('menu_items')->add([
+                'name' => $request->name,
+                'status' => $request->status,
+                'price' => $request->price,
+            ]);
+    
+            return response()->json([
+                'message' => 'Item created successfully.'
+            ]);
+        }
         
     }
 
     //delete item
     public function deleteItem(Request $request)
     {
-        $datas = $this->db->where('name', '=', $request->name)->documents();
+        $data = $this->subcollection->where('name', '=', 'susi')->documents();
 
         foreach ($datas as $key => $value) {
             $name = $value->data()['name'];
